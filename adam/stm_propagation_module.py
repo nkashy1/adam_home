@@ -11,28 +11,32 @@ import numpy as np
 from adam import Batch
 from adam import BatchRunManager
 
+
 class StmPropagationModule(object):
     def __init__(self, batches_module):
         self.batches_module = batches_module
-    
+
     def __repr__(self):
         return "StmPropagationModule"
 
-    def _propagate_states(self, state_vectors, propagation_params, opm_params_templ):
+    def _propagate_states(self, state_vectors, propagation_params,
+                          opm_params_templ):
         """Propagate states using many initial state vectors.
 
         Args:
             state_vectors (list of lists):
-                list of lists with 6 elements [rx, ry, rz, vx, vy, vz]  [km, km/s]
+                list of lists with 6 elements [rx, ry, rz, vx, vy, vz]
+                                              [km, km/s]
             propagation_params (PropagationParams):
                 propagation-related parameters to be used for all propagations
             opm_params_templ (OpmParams):
-                opm-related parameters to be used for all propagations, once with each
-                of the given state vectors.
+                opm-related parameters to be used for all propagations,
+                once with each of the given state vectors.
 
         Returns:
             end_state_vectors (list of lists):
-                states at end of integration [rx, ry, rz, vx, vy, vz]  [km, km/s]
+                states at end of integration [rx, ry, rz, vx, vy, vz]
+                [km, km/s]
         """
 
         # Create batches from state vectors
@@ -42,21 +46,23 @@ class StmPropagationModule(object):
             opm_params.set_state_vector(state_vector)
             batches.append(Batch(propagation_params, opm_params))
 
-        # submit batches and wait till they finish running  
+        # submit batches and wait till they finish running
         runner = BatchRunManager(self.batches_module, batches)
         runner.run()
 
         # Get final states
         end_state_vectors = []
         for batch in batches:
-            end_state_vectors.append(batch.get_results().get_end_state_vector())
+            end_state_vectors.append(
+                batch.get_results().get_end_state_vector()
+            )
 
         return end_state_vectors
 
     def _evaluate_func_with_derivative(self, xk, func, *args):
         """Evaluate a function and do central differencing for the derivative
 
-        The function has to take a list of input values and provide a list out outs
+        The function has to take a list of input values and provide a list out
         e.g. it has to be able to propagate more than 1 state
 
         Args:
@@ -109,26 +115,27 @@ class StmPropagationModule(object):
         dy_dx_matrix = np.matrix(dy_dx)
 
         return (yk, dy_dx_matrix)
-    
+
     def run_stm_propagation(self, propagation_params, opm_params):
         """ Generates a state transition matrix for the propagation described by the
-            given parameters. Does so by nudging the state vector given in opm_params
-            in several different directions and combining the results of propagating
-            with the slightly different state vectors.
-            
+            given parameters. Does so by nudging the state vector given in
+            opm_params in several different directions and combining the
+            results of propagating with the slightly different state vectors.
+
             Args:
                 propagation_params (PropagationParams):
                     Propagation-related parameters for the STM propagations
                 opm_params (OpmParams):
-                    OPM-related parameters for the propagations, including the nominal
-                    state vector that will be varied.
-            
+                    OPM-related parameters for the propagations, including the
+                    nominal state vector that will be varied.
+
             Returns:
                 end_state (list):
-                    Final state vector of nominal propagation [rx, ry, rz, vx, vy, vz] 
-                    [km, km/s]
+                    Final state vector of nominal propagation
+                    [rx, ry, rz, vx, vy, vz]  [km, km/s]
                 stm (matrix):
-                    STM describing effect of changes to initial state on final state
+                    STM describing effect of changes to initial state on final
+                    state
         """
         end_state, stm = self._evaluate_func_with_derivative(
             opm_params.get_state_vector(),
@@ -136,6 +143,5 @@ class StmPropagationModule(object):
             propagation_params,
             opm_params
         )
-        
+
         return end_state, stm
-    
