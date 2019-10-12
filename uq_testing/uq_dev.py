@@ -31,7 +31,7 @@ def sigma_pts_ddt(x, Pxx, h=np.sqrt(3.0)):
     for col in Sxx.T:  # loop over columns
         sig_pts.append(x + (h * col))
         sig_pts.append(x - (h * col))
-    sig_pts.append(x)
+    sig_pts.append(np.array(x))
     return sig_pts
 
 
