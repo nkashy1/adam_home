@@ -117,3 +117,41 @@ def propagate_mean_cov_ddt(f_x, x, P_xx, h=np.sqrt(3)):
     y_sigma_pts = f_x(x_sigma_pts)
     y, P_yy = mean_cov_ddt2(y_sigma_pts, h)
     return (y, P_yy)
+
+
+def bhattacharya_distance_mvn(mu_1, mu_2, P_1, P_2):
+    """Compute the bhattacharya distance between two multivariate gaussian
+    distributions
+
+    x1 ~ N(mu_1, P_1)
+    x2 ~ N(mu_2, P_2)
+
+    TODO Test:
+    bhattacharya_distance_mvn(
+        np.array([1., 1.]), np.array([2., 5.]),
+        np.array([np.array([1.,2.]), np.array([2.,5.])]), 
+        np.array([np.array([3.,4.]), np.array([4.,7.])])
+    ) = 0.7302799995588631
+
+    Args:
+        mu_1: Mean 1 (numpy array)
+        mu_2: Mean 2 (numpy array)
+        P_1: Cov 1 (2D numpy array)
+        P_2: Cov 2 (2D numpy array)
+
+    Out:
+        distance: Bhattacharya distance (float)
+
+    """
+    P = 0.5 * (P_1 + P_2)
+    mu = mu_1 - mu_2
+    # mu.T * inv(P) * mu
+    p1 = np.dot(np.dot(mu.T, np.linalg.inv(P)), mu)
+    # ln(P/sqrt(det(P1)*det(P2)))
+    p2 = np.log(
+        np.linalg.det(P) /
+        np.sqrt(np.linalg.det(P_1) * np.linalg.det(P_2))
+    )
+    # (1/8)*p1 + (1/2)*p2
+    distance = 0.125 * p1 + 0.5 * p2
+    return distance
