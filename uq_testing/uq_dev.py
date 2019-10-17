@@ -1,8 +1,11 @@
 import numpy as np
 from scipy.linalg import cholesky
 
+GAUSSIAN_DEFAULT_DDT_H = np.sqrt(3.0)
+DEFAULT_DDT_ORDER = 2
 
-def sigma_pts_ddt(x, Pxx, h=np.sqrt(3.0)):
+
+def sigma_pts_ddt(x, Pxx, h=GAUSSIAN_DEFAULT_DDT_H):
     """Get sigma points for the Divided Difference Transform
 
     DDT is a method for propagating uncertainty of an
@@ -35,9 +38,9 @@ def sigma_pts_ddt(x, Pxx, h=np.sqrt(3.0)):
     return sig_pts
 
 
-def mean_cov_ddt2(sig_pts, h=np.sqrt(3.0)):
+def mean_cov_ddt(sig_pts, h=GAUSSIAN_DEFAULT_DDT_H, order=DEFAULT_DDT_ORDER):
     """Compute mean and covariance from sigma point of the
-    second order Divided Difference Transform
+    Divided Difference Transform
 
     Y = f(X) where f is any nonlinear function acting
     on a multivariate gaussian initial condition
@@ -56,11 +59,15 @@ def mean_cov_ddt2(sig_pts, h=np.sqrt(3.0)):
             sig_pts[3] = f(x - h * Sxx[:, 1])
             sig_pts[4] = f(x)
         h = step size used in DDT (default = sqrt(3))
+        oder = order of divided difference (int 1 or 2)
     out:
         y: estimate of mean of Y
         Pyy: estimate of covariance of Y
 
     """
+    # Check for correctness of order
+    if order not in [1, 2]:
+        raise ValueError("Divided Difference has to be order 1 or 2")
     x_vars_count = int((len(sig_pts) - 1) / 2)
     y_vars_count = len(sig_pts[0])
     y_x = sig_pts[-1]  # f(x)
@@ -73,24 +80,30 @@ def mean_cov_ddt2(sig_pts, h=np.sqrt(3.0)):
     for var in range(0, x_vars_count):
         y_xpdx = sig_pts[2 * var]  # f(x+ dx)
         y_xmdx = sig_pts[2 * var + 1]  # f(x - dx)
-        # Mean related
-        y_mean += (y_xpdx + y_xmdx) / (2.0 * h ** 2)
         # Covariance related
         Syy_ord_1[:, var] = (y_xpdx - y_xmdx) / (2.0 * h)
-        Syy_ord_2[:, var] = (y_xpdx + y_xmdx - (2.0 * y_x)) * (
-            np.sqrt(h ** 2 - 1.0) / (2.0 * h ** 2)
-        )
-    # [Syy_ord_1, Syy_ord_2]
-    Syy_rect = np.concatenate((Syy_ord_1, Syy_ord_2), axis=1)
+        # Second order Mean and Covariance computations
+        if order == 2:
+            y_mean += (y_xpdx + y_xmdx) / (2.0 * h ** 2)
+            Syy_ord_2[:, var] = (y_xpdx + y_xmdx - (2.0 * y_x)) * (
+                np.sqrt(h ** 2 - 1.0) / (2.0 * h ** 2)
+            )
+    # Rectangular matrix
+    Syy_rect = Syy_ord_1
+    if order == 2:
+        # [Syy_ord_1, Syy_ord_2]
+        Syy_rect = np.concatenate((Syy_ord_1, Syy_ord_2), axis=1)
     # TODO compute Sxx using Householder transformation
     # We just want the covariance matrix, so no need to find square-root
     Pyy = np.dot(Syy_rect, Syy_rect.T)
     return y_mean, Pyy
 
 
-def propagate_mean_cov_ddt(f_x, x, P_xx, h=np.sqrt(3)):
+def propagate_mean_cov_ddt(
+    f_x, x, P_xx, h=GAUSSIAN_DEFAULT_DDT_H, order=DEFAULT_DDT_ORDER
+):
     """Compute mean and covariance using the
-    second order Divided Difference Transform
+    Divided Difference Transform
 
     Y = f(X) where f is any nonlinear function acting
     on a multivariate gaussian initial condition
@@ -108,6 +121,7 @@ def propagate_mean_cov_ddt(f_x, x, P_xx, h=np.sqrt(3)):
     args:
         f_x: function input
         h = step size used in DDT (default = sqrt(3))
+        order = (int) 1st or 2nd order transform (default=2)
     out:
         y: estimate of mean of Y
         Pyy: estimate of covariance of Y
@@ -115,7 +129,7 @@ def propagate_mean_cov_ddt(f_x, x, P_xx, h=np.sqrt(3)):
     """
     x_sigma_pts = sigma_pts_ddt(x, P_xx, h)
     y_sigma_pts = f_x(x_sigma_pts)
-    y, P_yy = mean_cov_ddt2(y_sigma_pts, h)
+    y, P_yy = mean_cov_ddt(y_sigma_pts, h, order)
     return (y, P_yy)
 
 
@@ -129,7 +143,7 @@ def bhattacharya_distance_mvn(mu_1, mu_2, P_1, P_2):
     TODO Test:
     bhattacharya_distance_mvn(
         np.array([1., 1.]), np.array([2., 5.]),
-        np.array([np.array([1.,2.]), np.array([2.,5.])]), 
+        np.array([np.array([1.,2.]), np.array([2.,5.])]),
         np.array([np.array([3.,4.]), np.array([4.,7.])])
     ) = 0.7302799995588631
 
@@ -148,10 +162,7 @@ def bhattacharya_distance_mvn(mu_1, mu_2, P_1, P_2):
     # mu.T * inv(P) * mu
     p1 = np.dot(np.dot(mu.T, np.linalg.inv(P)), mu)
     # ln(P/sqrt(det(P1)*det(P2)))
-    p2 = np.log(
-        np.linalg.det(P) /
-        np.sqrt(np.linalg.det(P_1) * np.linalg.det(P_2))
-    )
+    p2 = np.log(np.linalg.det(P) / np.sqrt(np.linalg.det(P_1) * np.linalg.det(P_2)))
     # (1/8)*p1 + (1/2)*p2
     distance = 0.125 * p1 + 0.5 * p2
     return distance
