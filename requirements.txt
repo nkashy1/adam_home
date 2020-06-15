@@ -1,10 +1,11 @@
 # pip development environment
-requests
-pandas
-pytest
-pytest-cov
 coveralls
 flake8
 jupyter
+pandas
+pytest
+pytest-cov
 pyxdg
 pyyaml
+ratelimiter
+requests

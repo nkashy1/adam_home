@@ -23,6 +23,9 @@ class ApsResults:
     def __str__(self):
         return f'{self.json()}'
 
+    def job_id(self):
+        return self._job_uuid
+
     def json(self):
         return {'job_uuid': self._job_uuid,
                 'results': self._results}

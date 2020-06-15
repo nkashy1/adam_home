@@ -6,7 +6,7 @@ from adam import PropagatorConfigs
 import pytest
 
 
-class TestPropagatorConfig:
+class TestPropagatorConfigService:
     """Test of propagator config manipulation.
 
     """

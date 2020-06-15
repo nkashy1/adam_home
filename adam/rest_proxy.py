@@ -9,10 +9,16 @@
         - _RestProxyForTest: mocks methods and exposes extra functionality to add expectations.
 """
 
-import json
-import requests
-import urllib
 import datetime
+import json
+import urllib
+
+import requests
+from ratelimiter import RateLimiter
+
+# 5 QPS
+MAX_CALLS_PER_SEC = 5
+RATE_LIMIT_PERIOD_SECONDS = 1
 
 
 class RestProxy(object):
@@ -31,10 +37,10 @@ class RestProxy(object):
             data_dict (dict): dictionary to be sent in the body of the POST
 
         Returns:
-            Pair of code and json data (when overriden)
+            Pair of code and json data (when overridden)
 
         Raises:
-            NotImplementedError: if this does not get overriden by the derived classes
+            NotImplementedError: if this does not get overridden by the derived classes
         """
         raise NotImplementedError("Got interface, need implementation")
 
@@ -220,6 +226,7 @@ class RestRequests(RestProxy):
         """
         self._base_url = base_url
 
+    @RateLimiter(max_calls=MAX_CALLS_PER_SEC, period=RATE_LIMIT_PERIOD_SECONDS)
     def post(self, path, data_dict):
         """Send POST request to the server
 
@@ -242,6 +249,7 @@ class RestRequests(RestProxy):
                   str(req.status_code) + ", " + str(req.content))
         return req.status_code, req_json
 
+    @RateLimiter(max_calls=MAX_CALLS_PER_SEC, period=RATE_LIMIT_PERIOD_SECONDS)
     def get(self, path):
         """Send GET request to the server
 
@@ -263,6 +271,7 @@ class RestRequests(RestProxy):
                   str(req.status_code) + ", " + str(req.content))
         return req.status_code, req_json
 
+    @RateLimiter(max_calls=MAX_CALLS_PER_SEC, period=RATE_LIMIT_PERIOD_SECONDS)
     def delete(self, path):
         """Send DELETE request to the server
 

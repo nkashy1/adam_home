@@ -54,6 +54,14 @@ class Projects(object):
         return [p for p in self.get_projects() if p.get_parent() == parent]
 
     def get_projects(self):
+        """Gets projects that the current user has access to read.
+
+        Returns:
+            list(Project): a list of Projects.
+
+        Raises:
+            RuntimeError if the server returns a non-200.
+        """
         projects = []
         for p in self._get_projects():
             project = Project(p['uuid'], p.get('parent'), p.get('name'), p.get('description'))
@@ -70,7 +78,18 @@ class Projects(object):
 
     #    print(tabulate(projects, headers="keys", tablefmt="fancy_grid"))
 
-    def get_project(self, uuid):
+    def get_project(self, uuid) -> Project:
+        """Gets project details.
+
+        Args:
+            uuid (str): the id of the project to get.
+
+        Returns:
+            Project: the newly-created Project.
+
+        Raises:
+            RuntimeError if the server returns a non-200.
+        """
         if uuid is None:
             raise KeyError("UUID is required.")
 
@@ -87,7 +106,20 @@ class Projects(object):
                        response.get('name'),
                        response.get('description'))
 
-    def new_project(self, parent, name, description):
+    def new_project(self, parent, name, description) -> Project:
+        """Creates a new project.
+
+        Args:
+            parent (str): the parent project id.
+            name (str): the name of the project.
+            description (str): the description of this project.
+
+        Returns:
+            Project: the newly-created Project.
+
+        Raises:
+            RuntimeError if the server returns a non-200.
+        """
         code, response = self._rest.post(
             '/project',
             {'parent': parent, 'name': name, 'description': description})
@@ -98,6 +130,14 @@ class Projects(object):
         return Project(response['uuid'], parent, name, description)
 
     def delete_project(self, uuid):
+        """Deletes a project.
+
+        Args:
+            uuid (str): the id of the project to delete.
+
+        Raises:
+            RuntimeError if the server returns a non-204.
+        """
         code = self._rest.delete('/project/' + uuid)
 
         if code != 204:

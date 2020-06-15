@@ -1,6 +1,8 @@
+"""Defines test fixtures for integration tests"""
+import pytest
+
 from adam import ConfigManager
 from adam import Service
-import pytest
 
 
 @pytest.fixture(scope="class")
@@ -20,6 +22,7 @@ def service(request):
 
 @pytest.fixture(scope="class")
 def working_project(service):
+    """Creates a new project for executing the test in."""
     working_project = service.new_working_project()
     assert working_project is not None
 
