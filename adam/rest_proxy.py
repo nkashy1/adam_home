@@ -329,7 +329,7 @@ class RestRequests(RestProxy):
 
     def _generate_report(self, method, path, status_code, **kwargs):
         title = f"{method} request: {path}"
-        tags = [f"method:{method}", f"path:{path}", f"code:{status_code}"]
+        tags = adam_reporter.system_tags() + [f"method:{method}", f"path:{path}", f"code:{status_code}"]
         content = f"""
 ## Request kwargs
 ```
