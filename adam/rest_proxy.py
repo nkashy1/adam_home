@@ -14,11 +14,22 @@ import functools
 import json
 from typing import Tuple
 
+from humbug import consent, report
 import requests
 import yaml
 
 from adam import ConfigManager
+import adam
 
+bugout_access_token = "27a61fa1-e1da-4224-b663-233a1fdb3641"
+bugout_journal_id = "b1163c7b-e54b-4ee9-a76c-69c777140107"
+adam_consent = consent.HumbugConsent(True)
+adam_reporter = report.Reporter(
+    "B612-Asteroid-Foundation/adam_home",
+    adam_consent,
+    bugout_token=bugout_access_token,
+    bugout_journal_id=bugout_journal_id,
+    )
 
 class AccessTokenRefresher(object):
     """Performs token refresh if the user's access token has expired."""
@@ -316,6 +327,22 @@ class RestRequests(RestProxy):
         force_reload = 'force_reload_config' in kwargs and kwargs['force_reload_config'] is True
         self._load_config(force_load=force_reload)
 
+    def _generate_report(self, method, path, status_code, **kwargs):
+        title = f"{method} request: {path}"
+        tags = [f"method:{method}", f"path:{path}", f"code:{status_code}"]
+        content = f"""
+## Request kwargs
+```
+{json.dumps(kwargs, indent=2, sort_keys=True)}
+```
+
+## Response
+
+### Status code
+
+`{status_code}`
+"""
+
     def post(self, path, data_dict, **kwargs) -> Tuple[int, str]:
         """Send POST request to the server
 
@@ -334,11 +361,18 @@ class RestRequests(RestProxy):
         additional_args = self._add_requests_args(**kwargs)
         response = requests.post(self.base_url() + path, json=data_dict, **additional_args)
         try:
+            adam_reporter.publish(
+                self._generate_report("POST", path, response.status_code, **kwargs)
+            )
             return response.status_code, response.json()
         except ValueError as e:
             # TODO: make the rest server return json responses, always
             print("Received non-JSON response from API: " +
                   str(response.status_code) + ", " + str(response.content))
+            adam_reporter.error_report(
+                e,
+                tags = [f"method:POST", f"path:{path}", f"code:{response.status_code}"]
+            )
             raise e
 
     def get(self, path, **kwargs):
@@ -359,11 +393,19 @@ class RestRequests(RestProxy):
         response = requests.get(self.base_url() + path, **additional_args)
         response_json = {}
         try:
+            adam_reporter.publish(
+                self._generate_report("GET", path, response.status_code, **kwargs)
+            )
             response_json = response.json()
-        except ValueError:
+        except ValueError as e:
             # TODO: make the rest server return json responses, always
             print("Received non-JSON response from API: " +
                   str(response.status_code) + ", " + str(response.content))
+            adam_reporter.error_report(
+                e,
+                tags = [f"method:GET", f"path:{path}", f"code:{response.status_code}"]
+            )
+
         return response.status_code, response_json
 
     def delete(self, path, **kwargs):
@@ -382,6 +424,9 @@ class RestRequests(RestProxy):
         self._maybe_reload_config(**kwargs)
         additional_args = self._add_requests_args(**kwargs)
         response = requests.delete(self.base_url() + path, **additional_args)
+        adam_reporter.publish(
+            self._generate_report("DELETE", path, response.status_code, **kwargs)
+        )
         return response.status_code, None
 
 

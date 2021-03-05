@@ -9,3 +9,4 @@ pytest-cov
 pyxdg
 pyyaml
 requests
+humbug
