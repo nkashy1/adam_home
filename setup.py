@@ -63,7 +63,7 @@ setup(name="adam",
           "Operating System :: POSIX :: Linux",
           "Operating System :: MacOS :: MacOS X"
       ],
-      install_requires=['requests', 'pandas'],
+      install_requires=['requests', 'pandas', 'humbug'],
       packages=['adam', 'adam.stk'],
       entry_points={
           'console_scripts': ['adamctl=adam.__main__:main'],
