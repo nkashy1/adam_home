@@ -342,6 +342,7 @@ class RestRequests(RestProxy):
 
 `{status_code}`
 """
+        return report.Report(title=title, tags=tags, content=content)
 
     def post(self, path, data_dict, **kwargs) -> Tuple[int, str]:
         """Send POST request to the server
